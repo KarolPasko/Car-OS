@@ -89,6 +89,7 @@ class ScreenshotTest {
     @Test fun settingsCameras() { shoot("06-settings-cameras") { AppShell(Screen.SETTINGS, SettingsSection.CAMERAS) } }
     @Test fun settingsAppearance() { shoot("07-settings-appearance") { AppShell(Screen.SETTINGS, SettingsSection.APPEARANCE) } }
     @Test fun settingsMusic() { shoot("08-settings-music") { AppShell(Screen.SETTINGS, SettingsSection.MUSIC) } }
+    @Test fun settingsPhoneLink() { shoot("12-settings-phone-link") { AppShell(Screen.SETTINGS, SettingsSection.PHONE_LINK) } }
     @Test fun onboarding() { shoot("09-onboarding") { OnboardingScreen {} } }
 
     @Config(qualifiers = "w1280dp-h480dp-land-mdpi")

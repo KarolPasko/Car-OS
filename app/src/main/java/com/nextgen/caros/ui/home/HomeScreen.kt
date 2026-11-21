@@ -58,8 +58,10 @@ import java.util.Date
 fun HomeScreen(nav: ShellNav) {
     val s by appContainer.settings.settings.collectAsState()
     val gap = 14.dp
+    if (s.dashboardLayout == DashboardLayout.CLUSTER) { ClusterDashboard(s, nav); return }
     Box(Modifier.fillMaxSize().padding(gap)) {
         when (s.dashboardLayout) {
+            DashboardLayout.CLUSTER -> {}
             DashboardLayout.STANDARD -> Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(gap)) {
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(gap)) {
                     ClockWidget(s, Modifier.fillMaxWidth().weight(1f))

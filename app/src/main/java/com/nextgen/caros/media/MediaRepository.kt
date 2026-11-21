@@ -176,6 +176,14 @@ class MediaRepository(
     fun previous() { active?.transportControls?.skipToPrevious() ?: key(KeyEvent.KEYCODE_MEDIA_PREVIOUS) }
     fun seekTo(ms: Long) { active?.transportControls?.seekTo(ms) }
 
+    /** Relative seek (e.g. ±15 s); only when the player supports seeking. */
+    fun seekBy(deltaMs: Long) {
+        val np = _state.value.nowPlaying ?: return
+        if (!np.canSeek) return
+        val target = (np.positionNow() + deltaMs).coerceAtLeast(0).let { if (np.durationMs > 0) it.coerceAtMost(np.durationMs) else it }
+        seekTo(target)
+    }
+
     fun selectSession(pkg: String) {
         controllers.firstOrNull { it.packageName == pkg }?.let {
             active?.unregisterCallback(callback)

@@ -33,9 +33,9 @@ data class NgColors(
     val textTertiary: Color,
     val accent: Color,
     val accent2: Color,
-    val success: Color = Color(0xFF34D399),
-    val warning: Color = Color(0xFFFBBF24),
-    val danger: Color = Color(0xFFF43F5E),
+    val success: Color = Color(0xFF30D158),
+    val warning: Color = Color(0xFFFF9F0A),
+    val danger: Color = Color(0xFFFF453A),
     val verified: Color = Color(0xFF34D399),
     val mapped: Color = Color(0xFF60A5FA),
     val unverified: Color = Color(0xFFFBBF24),
@@ -47,33 +47,35 @@ val LocalNg = staticCompositionLocalOf { darkColors(AccentColor.CYAN) }
 
 fun darkColors(a: AccentColor) = NgColors(
     isDark = true,
-    background = Color(0xFF05070D),
-    glass = Color(0x1AFFFFFF),
-    glassStrong = Color(0x2EFFFFFF),
-    glassBorder = Color(0x26FFFFFF),
-    textPrimary = Color(0xFFF8FAFC),
-    textSecondary = Color(0xB3E2E8F0),
-    textTertiary = Color(0x73CBD5E1),
+    background = Color(0xFF020306),
+    glass = Color(0x14FFFFFF),
+    glassStrong = Color(0x24FFFFFF),
+    glassBorder = Color(0x21FFFFFF),
+    textPrimary = Color(0xFFFFFFFF),
+    textSecondary = Color(0x99EBEBF5),
+    textTertiary = Color(0x4DEBEBF5),
     accent = Color(a.argb),
     accent2 = Color(a.argb2),
 )
 
 fun lightColors(a: AccentColor) = NgColors(
     isDark = false,
-    background = Color(0xFFEEF2F7),
-    glass = Color(0xB3FFFFFF),
-    glassStrong = Color(0xE6FFFFFF),
-    glassBorder = Color(0x1A0F172A),
-    textPrimary = Color(0xFF0B1220),
-    textSecondary = Color(0xB30F172A),
-    textTertiary = Color(0x800F172A),
-    accent = Color(a.argb).let { if (a == AccentColor.CYAN) Color(0xFF0891B2) else it },
+    background = Color(0xFFF2F2F7),
+    glass = Color(0xCCFFFFFF),
+    glassStrong = Color(0xF2FFFFFF),
+    glassBorder = Color(0x14000000),
+    textPrimary = Color(0xFF000000),
+    textSecondary = Color(0x993C3C43),
+    textTertiary = Color(0x4D3C3C43),
+    accent = Color(a.argb).let { if (a == AccentColor.CYAN || a == AccentColor.ICE) Color(0xFF0A84FF) else it },
     accent2 = Color(a.argb2),
 )
 
 object NgType {
     val font = FontFamily.SansSerif
     val clockHuge = TextStyle(fontFamily = font, fontWeight = FontWeight.Thin, fontSize = 96.sp, letterSpacing = (-2).sp)
+    val largeTitle = TextStyle(fontFamily = font, fontWeight = FontWeight.Bold, fontSize = 34.sp, letterSpacing = 0.4.sp)
+    val speedHuge = TextStyle(fontFamily = font, fontWeight = FontWeight.Black, fontSize = 92.sp, letterSpacing = (-3).sp)
     val display = TextStyle(fontFamily = font, fontWeight = FontWeight.Light, fontSize = 56.sp, letterSpacing = (-1).sp)
     val title = TextStyle(fontFamily = font, fontWeight = FontWeight.SemiBold, fontSize = 24.sp)
     val headline = TextStyle(fontFamily = font, fontWeight = FontWeight.SemiBold, fontSize = 19.sp)

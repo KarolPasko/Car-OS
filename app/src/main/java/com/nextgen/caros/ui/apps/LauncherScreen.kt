@@ -139,9 +139,9 @@ fun LauncherScreen(nav: ShellNav) {
 
     Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Tab.entries.forEach { t ->
-                Chip(t.label, selected = tab == t, modifier = Modifier.padding(end = 8.dp)) { tab = t }
-            }
+            com.nextgen.caros.ui.components.LargeTitle("Apps")
+            Spacer(Modifier.width(20.dp))
+            com.nextgen.caros.ui.components.SegmentedControl(Tab.entries.map { it to it.label }, tab, { tab = it }, Modifier.width(380.dp))
             Spacer(Modifier.weight(1f))
             Row(
                 Modifier.width(280.dp).clip(RoundedCornerShape(50)).background(ng.glass).padding(horizontal = 16.dp, vertical = 12.dp),

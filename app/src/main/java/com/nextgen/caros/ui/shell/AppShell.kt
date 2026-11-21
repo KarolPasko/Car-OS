@@ -10,6 +10,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
@@ -28,6 +29,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.offset
+import androidx.compose.material.icons.filled.PhoneIphone
+import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material.icons.filled.SignalCellularAlt
+import androidx.compose.material.icons.filled.LocationDisabled
+import androidx.compose.material.icons.filled.LocationSearching
+import androidx.compose.material.icons.filled.NearMe
+import androidx.compose.ui.unit.sp
+import com.nextgen.caros.ui.components.liquidGlass
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -129,7 +140,7 @@ fun Wallpaper() {
             AsyncImage(model = s.wallpaperUri, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
             Box(Modifier.fillMaxSize().background(ng.background.copy(alpha = s.wallpaperDim / 100f)))
         } else {
-            val colors = (if (s.wallpaper == WallpaperPreset.IMAGE) WallpaperPreset.NEBULA else s.wallpaper).colors.map { Color(it) }
+            val colors = (if (s.wallpaper == WallpaperPreset.IMAGE) WallpaperPreset.MIDNIGHT else s.wallpaper).colors.map { Color(it) }
             val cs = if (ng.isDark) colors else colors.map { lerpToLight(it) }
             Box(Modifier.fillMaxSize().background(Brush.linearGradient(cs)))
             // soft accent glows
@@ -155,19 +166,27 @@ fun AppShell(initial: Screen = Screen.HOME, initialSection: SettingsSection = Se
         openSettings = { settingsSection = it; screen = Screen.SETTINGS },
     )
     BackHandler(enabled = screen != Screen.HOME) { screen = Screen.HOME }
+    LaunchedEffect(Unit) {
+        com.nextgen.caros.link.UiEvents.requests.collect { t ->
+            when (t) {
+                com.nextgen.caros.link.UiEvents.Target.MAPS -> screen = Screen.MAPS
+                com.nextgen.caros.link.UiEvents.Target.SETTINGS_LINK -> { settingsSection = SettingsSection.PHONE_LINK; screen = Screen.SETTINGS }
+            }
+        }
+    }
 
     Box(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxSize()) {
-            Dock(screen, onSelect = { screen = it })
-            Box(Modifier.weight(1f).fillMaxHeight()) {
+        Column(Modifier.fillMaxSize()) {
+            StatusBar()
+            Box(Modifier.weight(1f).fillMaxWidth()) {
                 AnimatedContent(
                     targetState = screen,
                     transitionSpec = {
                         val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
-                        (fadeIn(tween(320, easing = FastOutSlowInEasing)) +
-                            slideInVertically(tween(380, easing = FastOutSlowInEasing)) { it / 14 * dir } +
+                        (fadeIn(tween(300, easing = FastOutSlowInEasing)) +
+                            slideInHorizontally(tween(380, easing = FastOutSlowInEasing)) { it / 18 * dir } +
                             scaleIn(tween(380), initialScale = 0.985f)) togetherWith
-                            (fadeOut(tween(200)) + scaleOut(tween(200), targetScale = 0.985f))
+                            (fadeOut(tween(180)) + scaleOut(tween(200), targetScale = 0.985f))
                     },
                     label = "screen",
                 ) { s ->
@@ -180,76 +199,110 @@ fun AppShell(initial: Screen = Screen.HOME, initialSection: SettingsSection = Se
                     }
                 }
             }
+            GlassTabBar(screen, onSelect = { screen = it }, modifier = Modifier.align(Alignment.CenterHorizontally))
         }
-        AlertOverlay(Modifier.align(Alignment.TopCenter).padding(top = 14.dp, start = 110.dp))
+        AlertOverlay(Modifier.align(Alignment.TopCenter).padding(top = 34.dp))
         com.nextgen.caros.ui.components.CameraAlertCard(
             Modifier.align(if (screen == Screen.MAPS) Alignment.BottomEnd else Alignment.TopEnd)
-                .padding(top = 20.dp, end = if (screen == Screen.MAPS) 100.dp else 24.dp, bottom = 24.dp)
+                .padding(top = 38.dp, end = if (screen == Screen.MAPS) 100.dp else 20.dp, bottom = 96.dp)
         )
     }
 }
 
+/** Thin iOS-style status bar: time on the left, connectivity on the right. */
 @Composable
-private fun Dock(current: Screen, onSelect: (Screen) -> Unit) {
+private fun StatusBar() {
     val ng = LocalNg.current
     val s by appContainer.settings.settings.collectAsState()
     val loc by appContainer.location.state.collectAsState()
     val bt by appContainer.bluetooth.state.collectAsState()
-    val media by appContainer.media.state.collectAsState()
+    val sys by appContainer.system.state.collectAsState()
+    val link by appContainer.phoneLink.state.collectAsState()
+    val wx by appContainer.weather.state.collectAsState()
     val now = rememberNow()
-
-    Column(
-        Modifier
-            .fillMaxHeight()
-            .width(96.dp)
-            .padding(start = 10.dp, top = 10.dp, bottom = 10.dp)
-            .clip(RoundedCornerShape(30.dp))
-            .background(Brush.verticalGradient(listOf(ng.glassStrong, ng.glass)))
-            .border(1.dp, ng.glassBorder, RoundedCornerShape(30.dp))
-            .padding(vertical = 14.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+    Row(
+        Modifier.fillMaxWidth().height(30.dp).padding(horizontal = 22.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(formatTime(now, s.use24h), style = NgType.headline.copy(color = ng.textPrimary))
-        Spacer(Modifier.height(10.dp))
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.SpaceEvenly, horizontalAlignment = Alignment.CenterHorizontally) {
-            Screen.entries.forEach { item ->
-                val selected = item == current
-                val bgAlpha by animateFloatAsState(if (selected) 1f else 0f, tween(250), label = "dockSel")
-                Box(
-                    Modifier
-                        .size(62.dp)
-                        .pressable { onSelect(item) }
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(ng.accentBrush, alpha = bgAlpha),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(item.icon, item.label, tint = if (selected) Color(0xFF020617) else ng.textPrimary, modifier = Modifier.size(30.dp))
-                }
+        Text(formatTime(now, s.use24h), style = NgType.label.copy(color = ng.textPrimary, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold))
+        Spacer(Modifier.weight(1f))
+        val iconMod = Modifier.size(17.dp)
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            (wx as? com.nextgen.caros.weather.WeatherState.Ready)?.let {
+                Text(it.weather.temp(s.speedUnit), style = NgType.label.copy(color = ng.textPrimary))
             }
-            // Now playing mini art (CarPlay-style)
-            media.nowPlaying?.art?.let { art ->
-                Image(
-                    art.asImageBitmap(), "Now playing",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(52.dp).pressable { onSelect(Screen.MUSIC) }.clip(RoundedCornerShape(14.dp)),
-                )
+            if (link.status == com.nextgen.caros.link.LinkStatus.CONNECTED) Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.PhoneIphone, "Phone linked", tint = ng.textPrimary, modifier = iconMod)
+                link.phoneBattery?.let { Text("$it%", style = NgType.caption.copy(color = ng.textPrimary)) }
             }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (bt.supported && bt.enabled) Icon(
+                if (bt.connectedDevices.isNotEmpty()) Icons.Filled.BluetoothConnected else Icons.Filled.Bluetooth, "Bluetooth",
+                tint = if (bt.connectedDevices.isNotEmpty()) ng.textPrimary else ng.textTertiary, modifier = iconMod,
+            )
+            Icon(
+                when { sys.wifi -> Icons.Filled.Wifi; sys.cellular -> Icons.Filled.SignalCellularAlt; else -> Icons.Filled.WifiOff },
+                "Network", tint = if (sys.online) ng.textPrimary else ng.textTertiary, modifier = iconMod,
+            )
             Icon(
                 when {
-                    !loc.permissionGranted || !loc.providerEnabled -> Icons.Filled.GpsOff
-                    loc.hasGpsFix && !loc.isStale -> Icons.Filled.GpsFixed
-                    else -> Icons.Filled.GpsNotFixed
+                    !loc.permissionGranted || !loc.providerEnabled -> Icons.Filled.LocationDisabled
+                    !loc.isStale -> Icons.Filled.NearMe
+                    else -> Icons.Filled.LocationSearching
                 },
-                "GPS",
-                tint = if (loc.hasGpsFix && !loc.isStale) ng.success else ng.textTertiary,
-                modifier = Modifier.size(20.dp),
+                "GPS", tint = if (!loc.isStale) ng.textPrimary else ng.textTertiary, modifier = iconMod,
             )
-            if (bt.supported) Icon(
-                if (bt.connectedDevices.isNotEmpty()) Icons.Filled.BluetoothConnected else Icons.Filled.Bluetooth, "Bluetooth",
-                tint = if (bt.connectedDevices.isNotEmpty()) ng.accent else ng.textTertiary, modifier = Modifier.size(20.dp),
+        }
+    }
+}
+
+/** Floating Liquid Glass tab bar with a sliding selection lens. */
+@Composable
+private fun GlassTabBar(current: Screen, onSelect: (Screen) -> Unit, modifier: Modifier = Modifier) {
+    val ng = LocalNg.current
+    val media by appContainer.media.state.collectAsState()
+    val itemW = 104.dp
+    val idx = Screen.entries.indexOf(current)
+    val lensX by androidx.compose.animation.core.animateDpAsState(
+        itemW * idx, androidx.compose.animation.core.spring(dampingRatio = 0.72f, stiffness = 380f), label = "lens",
+    )
+    Row(modifier.padding(bottom = 10.dp, top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier.height(64.dp).width(itemW * Screen.entries.size + 12.dp)
+                .liquidGlass(RoundedCornerShape(50), ng.isDark)
+                .padding(6.dp),
+        ) {
+            // Lens
+            Box(
+                Modifier.offset(x = lensX).width(itemW).fillMaxHeight()
+                    .clip(RoundedCornerShape(50))
+                    .background(if (ng.isDark) Color.White.copy(alpha = 0.16f) else Color.Black.copy(alpha = 0.07f))
+                    .border(1.dp, Color.White.copy(alpha = if (ng.isDark) 0.18f else 0.6f), RoundedCornerShape(50)),
             )
+            Row(Modifier.fillMaxSize()) {
+                Screen.entries.forEach { item ->
+                    val selected = item == current
+                    val tint by androidx.compose.animation.animateColorAsState(if (selected) ng.accent else ng.textPrimary, tween(250), label = "tab")
+                    Column(
+                        Modifier.width(itemW).fillMaxHeight().pressable(pressedScale = 0.9f) { onSelect(item) },
+                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
+                    ) {
+                        Icon(item.icon, item.label, tint = tint, modifier = Modifier.size(25.dp))
+                        Text(item.label, style = NgType.caption.copy(color = tint, letterSpacing = 0.sp, fontSize = 11.sp))
+                    }
+                }
+            }
+        }
+        // Now-playing orb next to the bar (like iOS's mini player)
+        media.nowPlaying?.let { np ->
+            Spacer(Modifier.width(12.dp))
+            Box(
+                Modifier.size(64.dp).liquidGlass(CircleShape, ng.isDark).pressable { onSelect(Screen.MUSIC) },
+                contentAlignment = Alignment.Center,
+            ) {
+                if (np.art != null) Image(np.art.asImageBitmap(), "Now playing", contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(50.dp).clip(CircleShape))
+                else Icon(Icons.Filled.MusicNote, null, tint = ng.accent)
+            }
         }
     }
 }

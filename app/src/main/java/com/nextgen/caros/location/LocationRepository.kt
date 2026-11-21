@@ -25,6 +25,8 @@ data class LocationState(
     val permissionGranted: Boolean = false,
     val providerEnabled: Boolean = true,
     val lastFixElapsedMs: Long = 0L,
+    /** "gps", "network" or "phone" (sent over Phone Link). */
+    val source: String = "gps",
 ) {
     val latLon: LatLon? get() = location?.let { LatLon(it.latitude, it.longitude) }
     val isStale: Boolean get() = location == null || SystemClock.elapsedRealtime() - lastFixElapsedMs > 10_000
@@ -99,10 +101,18 @@ class LocationRepository(private val context: Context) {
         _state.value = _state.value.copy(providerEnabled = enabled)
     }
 
-    private fun onNewLocation(loc: Location) {
+    /** Head unit's own GPS fix is fresh (used to decide whether phone GPS is needed). */
+    fun hasFreshOwnGps(): Boolean = SystemClock.elapsedRealtime() - lastGpsFixAt < 5_000
+
+    /** Location received from the driver's phone over Phone Link. */
+    fun injectExternal(loc: Location) {
+        onNewLocation(loc, fromPhone = true)
+    }
+
+    private fun onNewLocation(loc: Location, fromPhone: Boolean = false) {
         val now = SystemClock.elapsedRealtime()
-        val isGps = loc.provider == LocationManager.GPS_PROVIDER
-        if (isGps) lastGpsFixAt = now
+        val isGps = loc.provider == LocationManager.GPS_PROVIDER || fromPhone
+        if (isGps && !fromPhone) lastGpsFixAt = now
         // Ignore coarse network fixes while GPS is healthy.
         if (!isGps && now - lastGpsFixAt < 5_000) return
 
@@ -127,7 +137,8 @@ class LocationRepository(private val context: Context) {
             bearing = bearing,
             hasGpsFix = isGps,
             lastFixElapsedMs = now,
-            permissionGranted = true,
+            permissionGranted = _state.value.permissionGranted || fromPhone,
+            source = if (fromPhone) "phone" else if (loc.provider == LocationManager.GPS_PROVIDER) "gps" else "network",
         )
     }
 }

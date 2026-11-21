@@ -22,6 +22,7 @@ private val Context.dataStore by preferencesDataStore(name = "nextgen_settings")
 enum class ThemeMode(val label: String) { DARK("Dark"), LIGHT("Light"), SYSTEM("Automatic") }
 
 enum class AccentColor(val label: String, val argb: Long, val argb2: Long) {
+    ICE("Ice", 0xFF7DD3FC, 0xFF38BDF8),
     CYAN("Cyan", 0xFF22D3EE, 0xFF3B82F6),
     BLUE("Blue", 0xFF3B82F6, 0xFF6366F1),
     PURPLE("Purple", 0xFFA855F7, 0xFF6366F1),
@@ -31,6 +32,7 @@ enum class AccentColor(val label: String, val argb: Long, val argb2: Long) {
 }
 
 enum class DashboardLayout(val label: String, val description: String) {
+    CLUSTER("Cluster", "Instrument cluster with gauge, drive info, controls, weather and music"),
     STANDARD("Standard", "Clock, speed, map preview, music and weather"),
     MAP_FOCUS("Map focus", "Large live map with compact widgets"),
     MINIMAL("Minimal", "Clock, speed and music only"),
@@ -60,6 +62,7 @@ enum class MapStyle(val label: String, val darkUrl: String, val lightUrl: String
 }
 
 enum class WallpaperPreset(val label: String, val colors: List<Long>) {
+    MIDNIGHT("Midnight", listOf(0xFF000000, 0xFF05070C, 0xFF0A0F18)),
     NEBULA("Nebula", listOf(0xFF05070D, 0xFF0B1636, 0xFF1C0B3A)),
     OCEAN("Deep ocean", listOf(0xFF020617, 0xFF06283D, 0xFF0B4F6C)),
     AURORA("Aurora", listOf(0xFF03140F, 0xFF0A2A2A, 0xFF21114A)),
@@ -68,10 +71,18 @@ enum class WallpaperPreset(val label: String, val colors: List<Long>) {
     IMAGE("Custom image", emptyList()),
 }
 
+enum class PhoneLinkRole(val label: String) { OFF("Off"), HEAD_UNIT("Head unit"), PHONE("Phone") }
+
+enum class PhoneGpsMode(val label: String, val description: String) {
+    FALLBACK("When needed", "Use the phone's GPS only while the head unit has no fresh fix"),
+    ALWAYS("Always", "Prefer the phone's GPS whenever it's connected"),
+    NEVER("Never", "Ignore location sent by the phone"),
+}
+
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.DARK,
-    val accent: AccentColor = AccentColor.CYAN,
-    val dashboardLayout: DashboardLayout = DashboardLayout.STANDARD,
+    val accent: AccentColor = AccentColor.ICE,
+    val dashboardLayout: DashboardLayout = DashboardLayout.CLUSTER,
     val clockStyle: ClockStyle = ClockStyle.DIGITAL,
     val use24h: Boolean = true,
     val speedUnit: SpeedUnit = SpeedUnit.MPH,
@@ -95,7 +106,7 @@ data class AppSettings(
     val preferredMediaPackage: String = "com.spotify.music",
     val showVisualiser: Boolean = true,
     val spotifyClientId: String = "",
-    val wallpaper: WallpaperPreset = WallpaperPreset.NEBULA,
+    val wallpaper: WallpaperPreset = WallpaperPreset.MIDNIGHT,
     val wallpaperUri: String = "",
     val wallpaperDim: Int = 55,
     val favourites: List<String> = listOf(),
@@ -103,6 +114,10 @@ data class AppSettings(
     val homeLauncherEnabled: Boolean = false,
     val keepScreenOn: Boolean = true,
     val onboardingDone: Boolean = false,
+    val phoneLinkRole: PhoneLinkRole = PhoneLinkRole.HEAD_UNIT,
+    val phoneLinkDevice: String = "",
+    val phoneGpsMode: PhoneGpsMode = PhoneGpsMode.FALLBACK,
+    val sharePhoneLocation: Boolean = true,
 )
 
 /** Persists every user preference with Jetpack DataStore so they survive restarts. */
@@ -144,6 +159,10 @@ class SettingsRepository(private val context: Context, scope: CoroutineScope) {
         val homeLauncher = booleanPreferencesKey("homeLauncher")
         val keepOn = booleanPreferencesKey("keepScreenOn")
         val onboarding = booleanPreferencesKey("onboardingDone")
+        val linkRole = stringPreferencesKey("phoneLinkRole")
+        val linkDevice = stringPreferencesKey("phoneLinkDevice")
+        val phoneGps = stringPreferencesKey("phoneGpsMode")
+        val shareLoc = booleanPreferencesKey("sharePhoneLocation")
     }
 
     private inline fun <reified E : Enum<E>> Preferences.enum(key: Preferences.Key<String>, def: E): E =
@@ -187,6 +206,10 @@ class SettingsRepository(private val context: Context, scope: CoroutineScope) {
             homeLauncherEnabled = this[K.homeLauncher] ?: d.homeLauncherEnabled,
             keepScreenOn = this[K.keepOn] ?: d.keepScreenOn,
             onboardingDone = this[K.onboarding] ?: d.onboardingDone,
+            phoneLinkRole = enum(K.linkRole, d.phoneLinkRole),
+            phoneLinkDevice = this[K.linkDevice] ?: d.phoneLinkDevice,
+            phoneGpsMode = enum(K.phoneGps, d.phoneGpsMode),
+            sharePhoneLocation = this[K.shareLoc] ?: d.sharePhoneLocation,
         )
     }
 
@@ -243,4 +266,8 @@ class SettingsRepository(private val context: Context, scope: CoroutineScope) {
     fun setHomeLauncher(v: Boolean) = write { it[K.homeLauncher] = v }
     fun setKeepScreenOn(v: Boolean) = write { it[K.keepOn] = v }
     fun setOnboardingDone(v: Boolean) = write { it[K.onboarding] = v }
+    fun setPhoneLinkRole(v: PhoneLinkRole) = write { it[K.linkRole] = v.name }
+    fun setPhoneLinkDevice(v: String) = write { it[K.linkDevice] = v }
+    fun setPhoneGpsMode(v: PhoneGpsMode) = write { it[K.phoneGps] = v.name }
+    fun setSharePhoneLocation(v: Boolean) = write { it[K.shareLoc] = v }
 }

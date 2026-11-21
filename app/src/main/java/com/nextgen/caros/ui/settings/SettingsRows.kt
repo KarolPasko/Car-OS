@@ -32,6 +32,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.runtime.mutableStateListOf
 import com.nextgen.caros.ui.components.Chip
 import com.nextgen.caros.ui.components.GlassPanel
 import com.nextgen.caros.ui.components.PillButton
@@ -41,13 +46,41 @@ import com.nextgen.caros.ui.theme.LocalNg
 import com.nextgen.caros.ui.theme.NgType
 
 @Composable
-fun SettingGroup(title: String, content: @Composable ColumnScope.() -> Unit) {
+fun SettingGroup(title: String, footer: String? = null, content: @Composable () -> Unit) {
+    val ng = LocalNg.current
     Column(Modifier.fillMaxWidth()) {
-        SectionLabel(title, Modifier.padding(start = 8.dp, bottom = 8.dp))
-        GlassPanel(Modifier.fillMaxWidth(), corner = 22.dp, padding = 6.dp) {
-            Column(Modifier.fillMaxWidth(), content = content)
+        Text(title.uppercase(), style = NgType.caption.copy(color = ng.textSecondary, letterSpacing = 0.3.sp), modifier = Modifier.padding(start = 18.dp, bottom = 7.dp))
+        DividedColumn(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+                .background(if (ng.isDark) Color(0xFF1C1C1E).copy(alpha = 0.94f) else Color.White),
+            divider = if (ng.isDark) Color(0xFF38383A) else Color(0xFFC6C6C8),
+            content = content,
+        )
+        if (footer != null) Text(footer, style = NgType.caption.copy(color = ng.textSecondary, letterSpacing = 0.sp), modifier = Modifier.padding(start = 18.dp, end = 18.dp, top = 7.dp))
+        Spacer(Modifier.height(24.dp))
+    }
+}
+
+/** Vertical stack that draws iOS hairline separators (inset from the leading edge) between rows. */
+@Composable
+private fun DividedColumn(modifier: Modifier, divider: Color, content: @Composable () -> Unit) {
+    // Plain holder (not state): written during layout, read during the draw that follows it.
+    val lines = remember { ArrayList<Int>() }
+    Layout(
+        content = content,
+        modifier = modifier.drawWithContent {
+            drawContent()
+            lines.forEach { y -> drawLine(divider, Offset(16.dp.toPx(), y.toFloat()), Offset(size.width, y.toFloat()), strokeWidth = 1f) }
+        },
+    ) { measurables, constraints ->
+        val ps = measurables.map { it.measure(constraints.copy(minHeight = 0)) }.filter { it.height > 0 }
+        val h = ps.sumOf { it.height }
+        val ys = mutableListOf<Int>()
+        layout(constraints.maxWidth, h) {
+            var y = 0
+            ps.forEachIndexed { i, p -> p.place(0, y); y += p.height; if (i < ps.size - 1) ys += y }
+            lines.clear(); lines.addAll(ys)
         }
-        Spacer(Modifier.height(18.dp))
     }
 }
 
@@ -69,10 +102,7 @@ fun SwitchRow(title: String, subtitle: String? = null, checked: Boolean, onChang
     ) {
         RowText(title, subtitle, Modifier.weight(1f))
         Spacer(Modifier.width(12.dp))
-        Switch(
-            checked, onChange,
-            colors = SwitchDefaults.colors(checkedTrackColor = ng.accent, checkedThumbColor = Color.White),
-        )
+        com.nextgen.caros.ui.components.IosSwitch(checked, onChange)
     }
 }
 
@@ -82,7 +112,9 @@ fun <T> ChoiceRow(title: String, subtitle: String? = null, options: List<Pair<T,
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
         RowText(title, subtitle)
         Spacer(Modifier.height(10.dp))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (options.size in 2..4 && options.all { it.second.length <= 18 }) {
+            com.nextgen.caros.ui.components.SegmentedControl(options, selected, onSelect, Modifier.fillMaxWidth().widthIn(max = 620.dp))
+        } else FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             options.forEach { (v, label) -> Chip(label, selected = v == selected) { onSelect(v) } }
         }
     }
@@ -111,7 +143,7 @@ fun SliderRow(
 }
 
 @Composable
-fun TextFieldRow(title: String, subtitle: String? = null, value: String, placeholder: String, onSave: (String) -> Unit) {
+fun TextFieldRow(title: String, subtitle: String? = null, value: String, placeholder: String, onSave: (String) -> Unit, button: String = "Save") {
     val ng = LocalNg.current
     var text by remember(value) { mutableStateOf(value) }
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
@@ -126,7 +158,7 @@ fun TextFieldRow(title: String, subtitle: String? = null, value: String, placeho
                     cursorBrush = SolidColor(ng.accent), modifier = Modifier.fillMaxWidth())
             }
             Spacer(Modifier.width(10.dp))
-            PillButton("Save", primary = text != value, enabled = text != value) { onSave(text) }
+            PillButton(button, primary = text != value, enabled = text != value) { onSave(text) }
         }
     }
 }

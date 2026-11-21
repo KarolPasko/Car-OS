@@ -30,6 +30,13 @@ class MainActivity : ComponentActivity() {
                 else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
         }
+        lifecycleScope.launch {
+            c.system.state.collect { st ->
+                window.attributes = window.attributes.apply {
+                    screenBrightness = st.brightness ?: WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+                }
+            }
+        }
         handleIntent(intent)
 
         setContent {
@@ -58,6 +65,9 @@ class MainActivity : ComponentActivity() {
         c.media.refreshAccess()
         c.bluetooth.start()
         c.spotify.refreshFlags()
+        c.system.refresh()
+        if (c.phoneLink.state.value.status == com.nextgen.caros.link.LinkStatus.NO_PERMISSION ||
+            c.phoneLink.state.value.status == com.nextgen.caros.link.LinkStatus.BT_OFF) c.phoneLink.restart()
     }
 
     override fun onNewIntent(intent: Intent) {

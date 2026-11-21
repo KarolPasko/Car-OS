@@ -56,6 +56,9 @@ class AppContainer(app: Application) {
     val spotify = SpotifyRepository(app, appScope, settings)
     val apps = AppsRepository(app, appScope, settings)
     val bluetooth = BluetoothRepository(app, appScope)
+    val trip = com.nextgen.caros.trip.TripRepository(appScope, location)
+    val phoneLink = com.nextgen.caros.link.PhoneLinkRepository(app, appScope, settings, location, navigation)
+    val system = com.nextgen.caros.system.SystemStatusRepository(app, appScope)
 }
 
 /** Convenience accessor for Compose code. */

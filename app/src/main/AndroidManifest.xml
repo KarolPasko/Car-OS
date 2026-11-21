@@ -11,6 +11,9 @@
     <!-- Keep guidance running while another app (e.g. Spotify) is in front -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <!-- Phone Link on Android 11 and older (RFCOMM socket) -->
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
     <!-- Ongoing navigation notification (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Show which phone / audio device is connected -->
@@ -98,6 +101,32 @@
             android:name=".nav.NavigationService"
             android:exported="false"
             android:foregroundServiceType="location" />
+
+        <service
+            android:name=".link.PhoneLinkService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice|location" />
+
+        <!-- "Share" a place from Google Maps (or any app) to NextGen Car OS / to the car -->
+        <activity
+            android:name=".link.ShareReceiverActivity"
+            android:exported="true"
+            android:label="Send to car"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="geo" />
+            </intent-filter>
+        </activity>
 
         <!-- Notification-listener access is the Android-supported way for a third-party app
              to read and control other apps' media sessions (Spotify, YouTube Music, etc.). -->

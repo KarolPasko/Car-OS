@@ -68,6 +68,7 @@ fun rememberPermissions(): List<PermissionInfo> {
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         appContainer.location.start()
         appContainer.bluetooth.start()
+        appContainer.phoneLink.restart()
         localTick++
     }
     return remember(tick, localTick) {
@@ -95,8 +96,8 @@ fun rememberPermissions(): List<PermissionInfo> {
             ),
             PermissionInfo(
                 "bluetooth", "Nearby devices (Bluetooth)", Icons.Filled.Bluetooth,
-                "Lets the dashboard show which phone or audio device is connected. NextGen Car OS doesn't pair, scan or " +
-                    "connect devices itself – that stays in Android's Bluetooth settings.",
+                "Shows which phone or audio device is connected, and runs Phone Link – the Bluetooth connection to " +
+                    "NextGen Car OS on your Android phone (GPS, destinations, battery). Pairing stays in Android's Bluetooth settings.",
                 when { Build.VERSION.SDK_INT < 31 -> PermStatus.NOT_NEEDED; bt -> PermStatus.GRANTED; else -> PermStatus.DENIED },
                 if (bt) null else ({ launcher.launch(arrayOf(Manifest.permission.BLUETOOTH_CONNECT)) }),
             ),

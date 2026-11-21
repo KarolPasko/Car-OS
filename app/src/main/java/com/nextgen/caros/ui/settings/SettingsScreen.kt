@@ -32,6 +32,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.PhoneIphone
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Map
@@ -83,41 +85,43 @@ import com.nextgen.caros.ui.theme.NgType
 import java.text.DateFormat
 import java.util.Date
 
-enum class SettingsSection(val label: String, val icon: ImageVector) {
-    APPEARANCE("Appearance", Icons.Filled.Palette),
-    DASHBOARD("Dashboard", Icons.Filled.Dashboard),
-    CLOCK("Clock", Icons.Filled.Schedule),
-    DRIVING("Speed & units", Icons.Filled.Speed),
-    MAPS("Maps & navigation", Icons.Filled.Map),
-    CAMERAS("Speed cameras", Icons.Filled.CameraAlt),
-    SOUND("Sound & alerts", Icons.Filled.VolumeUp),
-    MUSIC("Music & Spotify", Icons.Filled.MusicNote),
-    WALLPAPER("Wallpaper", Icons.Filled.Wallpaper),
-    PERMISSIONS("Permissions", Icons.Filled.Security),
-    ABOUT("About & data", Icons.Filled.Info),
+enum class SettingsSection(val label: String, val icon: ImageVector, val color: Color) {
+    PHONE_LINK("Phone Link", Icons.Filled.PhoneIphone, Color(0xFF30D158)),
+    APPEARANCE("Appearance", Icons.Filled.Palette, Color(0xFF0A84FF)),
+    DASHBOARD("Dashboard", Icons.Filled.Dashboard, Color(0xFF5E5CE6)),
+    CLOCK("Clock", Icons.Filled.Schedule, Color(0xFF8E8E93)),
+    DRIVING("Speed & units", Icons.Filled.Speed, Color(0xFFFF453A)),
+    MAPS("Maps & navigation", Icons.Filled.Map, Color(0xFF34C759)),
+    CAMERAS("Speed cameras", Icons.Filled.CameraAlt, Color(0xFFFF9F0A)),
+    SOUND("Sound & alerts", Icons.Filled.VolumeUp, Color(0xFFFF375F)),
+    MUSIC("Music & Spotify", Icons.Filled.MusicNote, Color(0xFFFF2D55)),
+    WALLPAPER("Wallpaper", Icons.Filled.Wallpaper, Color(0xFF64D2FF)),
+    PERMISSIONS("Permissions", Icons.Filled.Security, Color(0xFF636366)),
+    ABOUT("About & data", Icons.Filled.Info, Color(0xFF8E8E93)),
 }
 
 @Composable
 fun SettingsScreen(section: SettingsSection, onSection: (SettingsSection) -> Unit) {
     val ng = LocalNg.current
     Row(Modifier.fillMaxSize().padding(14.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        GlassPanel(Modifier.width(260.dp).fillMaxHeight(), padding = 10.dp) {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                item { Text("Settings", style = NgType.title.copy(color = ng.textPrimary), modifier = Modifier.padding(12.dp)) }
+        Column(Modifier.width(280.dp).fillMaxHeight()) {
+            com.nextgen.caros.ui.components.LargeTitle("Settings", Modifier.padding(start = 8.dp, bottom = 10.dp))
+            LazyColumn(
+                Modifier.clip(RoundedCornerShape(16.dp)).background(if (ng.isDark) Color(0xFF1C1C1E).copy(alpha = 0.94f) else Color.White),
+            ) {
                 items(SettingsSection.entries) { s ->
                     val sel = s == section
                     Row(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
-                            .background(if (sel) ng.accent.copy(alpha = 0.18f) else Color.Transparent)
-                            .pressable(pressedScale = 0.97f) { onSection(s) }
-                            .padding(horizontal = 12.dp, vertical = 12.dp),
+                        Modifier.fillMaxWidth()
+                            .background(if (sel) ng.accent.copy(alpha = if (ng.isDark) 0.28f else 0.16f) else Color.Transparent)
+                            .pressable(pressedScale = 0.98f) { onSection(s) }
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Box(Modifier.size(32.dp).clip(RoundedCornerShape(10.dp)).background(if (sel) ng.accentBrush else Brush.linearGradient(listOf(ng.glassStrong, ng.glass))), contentAlignment = Alignment.Center) {
-                            Icon(s.icon, null, tint = if (sel) Color(0xFF020617) else ng.textPrimary, modifier = Modifier.size(18.dp))
-                        }
-                        Spacer(Modifier.width(12.dp))
-                        Text(s.label, style = NgType.label.copy(color = ng.textPrimary))
+                        com.nextgen.caros.ui.components.IconBadge(s.icon, s.color)
+                        Spacer(Modifier.width(14.dp))
+                        Text(s.label, style = NgType.body.copy(color = ng.textPrimary), modifier = Modifier.weight(1f))
+                        Icon(Icons.Filled.ChevronRight, null, tint = ng.textTertiary, modifier = Modifier.size(20.dp))
                     }
                 }
             }
@@ -130,6 +134,7 @@ fun SettingsScreen(section: SettingsSection, onSection: (SettingsSection) -> Uni
             LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 6.dp)) {
                 item {
                     when (s) {
+                        SettingsSection.PHONE_LINK -> PhoneLinkSettings()
                         SettingsSection.APPEARANCE -> AppearanceSettings()
                         SettingsSection.DASHBOARD -> DashboardSettings()
                         SettingsSection.CLOCK -> ClockSettings()
@@ -219,6 +224,12 @@ private fun LayoutThumb(l: DashboardLayout) {
     val a = ng.accent.copy(alpha = 0.5f)
     Row(Modifier.fillMaxWidth().height(70.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         when (l) {
+            DashboardLayout.CLUSTER -> Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Box(Modifier.fillMaxWidth().weight(1.1f).clip(RoundedCornerShape(6.dp)).background(a))
+                Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    repeat(3) { Box(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(6.dp)).background(c)) }
+                }
+            }
             DashboardLayout.STANDARD -> {
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Box(Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(6.dp)).background(c))
