@@ -132,11 +132,14 @@ fun NextGenRoot() {
 }
 
 @Composable
-fun Wallpaper() {
-    val s by appContainer.settings.settings.collectAsState()
+fun Wallpaper(override: WallpaperPreset? = null) {
+    val st by appContainer.settings.settings.collectAsState()
+    val s = if (override != null) st.copy(wallpaper = override) else st
     val ng = LocalNg.current
     Box(Modifier.fillMaxSize()) {
-        if (s.wallpaper == WallpaperPreset.IMAGE && s.wallpaperUri.isNotBlank()) {
+        if (s.wallpaper == WallpaperPreset.FLOW) {
+            FlowWallpaper(ng.isDark)
+        } else if (s.wallpaper == WallpaperPreset.IMAGE && s.wallpaperUri.isNotBlank()) {
             AsyncImage(model = s.wallpaperUri, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
             Box(Modifier.fillMaxSize().background(ng.background.copy(alpha = s.wallpaperDim / 100f)))
         } else {
@@ -153,14 +156,40 @@ fun Wallpaper() {
     }
 }
 
+/** Original abstract wallpaper: layered flowing waves in red, magenta, purple and blue. */
+@Composable
+private fun FlowWallpaper(dark: Boolean) {
+    androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+        val w = size.width; val h = size.height
+        drawRect(Brush.linearGradient(listOf(Color(0xFF1B0A26), Color(0xFF3B0B2E), Color(0xFF240B3B))))
+        fun wave(color: List<Color>, y0: Float, y1: Float, c1: Float, c2: Float, alpha: Float = 1f) {
+            val p = androidx.compose.ui.graphics.Path().apply {
+                moveTo(0f, h * y0)
+                cubicTo(w * 0.3f, h * c1, w * 0.6f, h * c2, w, h * y1)
+                lineTo(w, h); lineTo(0f, h); close()
+            }
+            drawPath(p, Brush.linearGradient(color, start = androidx.compose.ui.geometry.Offset(0f, 0f), end = androidx.compose.ui.geometry.Offset(w, h)), alpha = alpha)
+        }
+        wave(listOf(Color(0xFF8B0F2C), Color(0xFFD7263D)), 0.05f, -0.1f, 0.35f, -0.05f)
+        wave(listOf(Color(0xFFE0313F), Color(0xFFB3122E)), 0.35f, 0.10f, 0.15f, 0.55f, 0.9f)
+        wave(listOf(Color(0xFFD9467A), Color(0xFF9D2BB8)), 0.62f, 0.45f, 0.40f, 0.85f, 0.9f)
+        wave(listOf(Color(0xFF7B2FF7), Color(0xFF3E2AD1)), 0.85f, 0.62f, 1.05f, 0.75f, 0.85f)
+        wave(listOf(Color(0xFF3A7BFD), Color(0xFF6D28D9)), 1.02f, 0.86f, 0.80f, 1.08f, 0.8f)
+        drawRect(Color.Black.copy(alpha = if (dark) 0.18f else 0.0f))
+    }
+}
+
 private fun lerpToLight(c: Color) = Color(
     red = 0.92f + c.red * 0.08f, green = 0.94f + c.green * 0.06f, blue = 0.97f + c.blue * 0.03f,
 )
 
 @Composable
-fun AppShell(initial: Screen = Screen.HOME, initialSection: SettingsSection = SettingsSection.APPEARANCE) {
+fun AppShell(initial: Screen = Screen.HOME, initialSection: SettingsSection = SettingsSection.APPEARANCE, initialHomeGrid: Boolean = false) {
     var screen by rememberSaveable { mutableStateOf(initial) }
     var settingsSection by rememberSaveable { mutableStateOf(initialSection) }
+    var homeGrid by rememberSaveable { mutableStateOf(initialHomeGrid) }
+    val shellSettings by appContainer.settings.settings.collectAsState()
+    val sidebar = shellSettings.navBarStyle == com.nextgen.caros.data.NavBarStyle.SIDEBAR
     val nav = ShellNav(
         go = { screen = it },
         openSettings = { settingsSection = it; screen = Screen.SETTINGS },
@@ -176,32 +205,39 @@ fun AppShell(initial: Screen = Screen.HOME, initialSection: SettingsSection = Se
     }
 
     Box(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize()) {
-            StatusBar()
-            Box(Modifier.weight(1f).fillMaxWidth()) {
-                AnimatedContent(
-                    targetState = screen,
-                    transitionSpec = {
-                        val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
-                        (fadeIn(tween(300, easing = FastOutSlowInEasing)) +
-                            slideInHorizontally(tween(380, easing = FastOutSlowInEasing)) { it / 18 * dir } +
-                            scaleIn(tween(380), initialScale = 0.985f)) togetherWith
-                            (fadeOut(tween(180)) + scaleOut(tween(200), targetScale = 0.985f))
-                    },
-                    label = "screen",
-                ) { s ->
-                    when (s) {
-                        Screen.HOME -> HomeScreen(nav)
-                        Screen.MAPS -> MapScreen(nav)
-                        Screen.MUSIC -> MusicScreen(nav)
-                        Screen.APPS -> LauncherScreen(nav)
-                        Screen.SETTINGS -> SettingsScreen(settingsSection, onSection = { settingsSection = it })
+        Row(Modifier.fillMaxSize()) {
+            if (sidebar) CarPlaySidebar(screen, homeGrid, onSelect = { screen = it }, onToggleHome = { homeGrid = !homeGrid })
+            Column(Modifier.weight(1f).fillMaxHeight()) {
+                if (!sidebar) StatusBar() else Spacer(Modifier.height(10.dp))
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    AnimatedContent(
+                        targetState = if (screen == Screen.HOME && homeGrid && sidebar) -1 else screen.ordinal,
+                        transitionSpec = {
+                            val dir = if (targetState > initialState) 1 else -1
+                            (fadeIn(tween(300, easing = FastOutSlowInEasing)) +
+                                slideInHorizontally(tween(380, easing = FastOutSlowInEasing)) { it / 18 * dir } +
+                                scaleIn(tween(380), initialScale = 0.985f)) togetherWith
+                                (fadeOut(tween(180)) + scaleOut(tween(200), targetScale = 0.985f))
+                        },
+                        label = "screen",
+                    ) { idx ->
+                        if (idx == -1) CarPlayHome(nav) else when (Screen.entries[idx]) {
+                            Screen.HOME -> HomeScreen(nav)
+                            Screen.MAPS -> MapScreen(nav)
+                            Screen.MUSIC -> MusicScreen(nav)
+                            Screen.APPS -> LauncherScreen(nav)
+                            Screen.SETTINGS -> SettingsScreen(settingsSection, onSection = { settingsSection = it })
+                        }
                     }
                 }
+                if (!sidebar) GlassTabBar(screen, onSelect = { screen = it }, modifier = Modifier.align(Alignment.CenterHorizontally))
+                else Spacer(Modifier.height(10.dp))
             }
-            GlassTabBar(screen, onSelect = { screen = it }, modifier = Modifier.align(Alignment.CenterHorizontally))
         }
-        AlertOverlay(Modifier.align(Alignment.TopCenter).padding(top = 34.dp))
+        AlertOverlay(
+            Modifier.align(Alignment.BottomCenter)
+                .padding(start = if (sidebar) 118.dp else 20.dp, end = 20.dp, bottom = if (sidebar) 16.dp else 92.dp)
+        )
         com.nextgen.caros.ui.components.CameraAlertCard(
             Modifier.align(if (screen == Screen.MAPS) Alignment.BottomEnd else Alignment.TopEnd)
                 .padding(top = 38.dp, end = if (screen == Screen.MAPS) 100.dp else 20.dp, bottom = 96.dp)
@@ -307,6 +343,7 @@ private fun GlassTabBar(current: Screen, onSelect: (Screen) -> Unit, modifier: M
     }
 }
 
+/** CarPlay-style notification banner along the bottom: icon, title, "now", detail and OK. */
 @Composable
 private fun AlertOverlay(modifier: Modifier) {
     val ng = LocalNg.current
@@ -314,35 +351,35 @@ private fun AlertOverlay(modifier: Modifier) {
     val s by appContainer.settings.settings.collectAsState()
     LaunchedEffect(banner?.id) {
         val b = banner ?: return@LaunchedEffect
-        delay(4000); Notifier.dismiss(b.id)
+        delay(5000); Notifier.dismiss(b.id)
     }
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        AnimatedVisibility(
-            visible = banner != null && s.showNotificationsBanner,
-            enter = slideInVertically(tween(350)) { -it } + fadeIn(),
-            exit = slideOutVertically(tween(250)) { -it } + fadeOut(),
+    AnimatedVisibility(
+        visible = banner != null && s.showNotificationsBanner,
+        enter = slideInVertically(tween(380, easing = FastOutSlowInEasing)) { it } + fadeIn(),
+        exit = slideOutVertically(tween(260)) { it } + fadeOut(),
+        modifier = modifier,
+    ) {
+        val b = banner ?: return@AnimatedVisibility
+        Row(
+            Modifier.widthIn(max = 980.dp).fillMaxWidth()
+                .liquidGlass(RoundedCornerShape(26.dp), ng.isDark, tint = ng.accent2, strength = 1.6f)
+                .padding(horizontal = 18.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            val b = banner ?: return@AnimatedVisibility
-            Row(
-                Modifier
-                    .widthIn(max = 560.dp)
-                    .clip(RoundedCornerShape(22.dp))
-                    .background(if (ng.isDark) Color(0xF00E1320) else Color(0xF5FFFFFF))
-                    .border(1.dp, ng.glassBorder, RoundedCornerShape(22.dp))
-                    .padding(horizontal = 18.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(Modifier.size(36.dp).clip(CircleShape).background(ng.accentBrush), contentAlignment = Alignment.Center) {
-                    Icon(b.icon ?: Icons.Filled.Info, null, tint = Color(0xFF020617), modifier = Modifier.size(20.dp))
+            com.nextgen.caros.ui.components.SquircleIcon(b.icon ?: Icons.Filled.Info, listOf(Color(0xFFFF5F6D), Color(0xFFE11D48)), 56.dp)
+            Spacer(Modifier.width(16.dp))
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(b.title, style = NgType.title.copy(color = ng.textPrimary, fontSize = 22.sp), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false))
+                    Spacer(Modifier.width(12.dp))
+                    Text("now", style = NgType.body.copy(color = ng.textSecondary))
                 }
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f, fill = false)) {
-                    Text(b.title, style = NgType.label.copy(color = ng.textPrimary), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    b.body?.let { Text(it, style = NgType.caption.copy(color = ng.textSecondary), maxLines = 2) }
-                }
-                Spacer(Modifier.width(10.dp))
-                Icon(Icons.Filled.Close, "Dismiss", tint = ng.textTertiary, modifier = Modifier.size(22.dp).pressable { Notifier.dismiss(b.id) })
+                b.body?.let { Text(it, style = NgType.body.copy(color = ng.textSecondary), maxLines = 1, overflow = TextOverflow.Ellipsis) }
             }
+            Spacer(Modifier.width(16.dp))
+            Text("OK", style = NgType.title.copy(color = Color(0xFF5AC8FA), fontSize = 22.sp),
+                modifier = Modifier.pressable { Notifier.dismiss(b.id) }.padding(horizontal = 12.dp, vertical = 8.dp))
         }
     }
 }

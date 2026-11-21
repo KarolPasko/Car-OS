@@ -32,6 +32,22 @@ import java.security.SecureRandom
 
 data class SpotifyPlaylist(val id: String, val name: String, val uri: String, val imageUrl: String?, val tracks: Int, val owner: String)
 
+/** What Spotify reports as playing on the user's account (any device), from the Web API. */
+data class SpotifyNow(
+    val title: String,
+    val artist: String,
+    val album: String,
+    val artUrl: String?,
+    val progressMs: Long,
+    val durationMs: Long,
+    val isPlaying: Boolean,
+    val deviceName: String?,
+    val fetchedAt: Long = android.os.SystemClock.elapsedRealtime(),
+) {
+    fun positionNow(): Long = if (!isPlaying) progressMs
+    else (progressMs + android.os.SystemClock.elapsedRealtime() - fetchedAt).coerceAtMost(durationMs)
+}
+
 data class SpotifyState(
     val clientIdConfigured: Boolean = false,
     val connected: Boolean = false,
@@ -41,6 +57,7 @@ data class SpotifyState(
     val playlists: List<SpotifyPlaylist> = emptyList(),
     val message: String? = null,
     val spotifyInstalled: Boolean = false,
+    val now: SpotifyNow? = null,
 )
 
 /**
@@ -71,6 +88,13 @@ class SpotifyRepository(
     init {
         scope.launch {
             settings.settings.collect { refreshFlags() }
+        }
+        // Poll "currently playing" while signed in (cheap; 5 s like Spotify's own widgets).
+        scope.launch {
+            while (true) {
+                if (_state.value.connected) pollNowPlaying()
+                delay(5000)
+            }
         }
         if (prefs.getString("refresh_token", null) != null) {
             _state.value = _state.value.copy(connected = true)
@@ -240,6 +264,46 @@ class SpotifyRepository(
             } else {
                 openInSpotify(uri)
             }
+        }
+    }
+
+    private suspend fun pollNowPlaying() {
+        runCatching {
+            val body = api("GET", "/me/player?additional_types=episode")
+            if (body.isBlank()) { _state.value = _state.value.copy(now = null); return }
+            val o = Http.json.parseToJsonElement(body).jsonObject
+            val item = o["item"] as? JsonObject ?: run { _state.value = _state.value.copy(now = null); return }
+            val images = ((item["album"] as? JsonObject)?.get("images") ?: (item["images"]))
+            val art = (images as? kotlinx.serialization.json.JsonArray)?.firstOrNull()?.jsonObject?.get("url")?.jsonPrimitive?.contentOrNull
+            val artists = (item["artists"] as? kotlinx.serialization.json.JsonArray)?.mapNotNull {
+                it.jsonObject["name"]?.jsonPrimitive?.contentOrNull
+            }?.joinToString(", ") ?: (item["show"] as? JsonObject)?.get("name")?.jsonPrimitive?.contentOrNull ?: ""
+            SpotifyNow(
+                title = item["name"]?.jsonPrimitive?.contentOrNull ?: "",
+                artist = artists,
+                album = (item["album"] as? JsonObject)?.get("name")?.jsonPrimitive?.contentOrNull ?: "",
+                artUrl = art,
+                progressMs = o["progress_ms"]?.jsonPrimitive?.longOrNull ?: 0,
+                durationMs = item["duration_ms"]?.jsonPrimitive?.longOrNull ?: 0,
+                isPlaying = o["is_playing"]?.jsonPrimitive?.booleanOrNull ?: false,
+                deviceName = (o["device"] as? JsonObject)?.get("name")?.jsonPrimitive?.contentOrNull,
+            )
+        }.onSuccess { _state.value = _state.value.copy(now = it) }
+    }
+
+    /** Web API transport controls (Spotify allows these for Premium accounts only). */
+    fun control(action: String) {
+        scope.launch {
+            val ok = runCatching {
+                when (action) {
+                    "play" -> api("PUT", "/me/player/play")
+                    "pause" -> api("PUT", "/me/player/pause")
+                    "next" -> api("POST", "/me/player/next")
+                    "previous" -> api("POST", "/me/player/previous")
+                }
+            }.isSuccess
+            if (!ok && !_state.value.premium) openInSpotify()
+            delay(400); pollNowPlaying()
         }
     }
 

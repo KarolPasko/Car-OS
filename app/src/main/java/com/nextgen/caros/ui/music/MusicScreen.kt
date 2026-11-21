@@ -101,7 +101,15 @@ private fun NowPlayingPanel(modifier: Modifier, nav: ShellNav) {
     val np = media.nowPlaying
     val m = appContainer.media
 
+    val isSpotify = np?.packageName == com.nextgen.caros.spotify.SpotifyRepository.SPOTIFY_PACKAGE
+    val tint by androidx.compose.animation.animateColorAsState(
+        rememberArtColor(np?.art, np?.artUri, Color(0xFF1E1E1E)), androidx.compose.animation.core.tween(800), label = "musicTint",
+    )
     GlassPanel(modifier, padding = 22.dp) {
+        // Spotify-style artwork-tinted backdrop
+        if (np != null) Box(Modifier.matchParentSize().background(
+            androidx.compose.ui.graphics.Brush.verticalGradient(listOf(tint.copy(alpha = 0.85f), SpotifyBlack.copy(alpha = 0.6f)))
+        ))
         // Ambient blurred artwork glow (Android 12+ supports blur natively)
         if (np?.art != null && Build.VERSION.SDK_INT >= 31) {
             Box(Modifier.fillMaxSize().blur(60.dp).background(Color.Transparent)) {
@@ -134,7 +142,7 @@ private fun NowPlayingPanel(modifier: Modifier, nav: ShellNav) {
                 ) { _ -> AlbumArt(np, Modifier.fillMaxHeight(0.92f), corner = 26) }
                 Spacer(Modifier.width(24.dp))
                 Column(Modifier.weight(1f)) {
-                    SectionLabel(np?.appName ?: "Not playing")
+                    SectionLabel(if (isSpotify) "Playing on Spotify" else np?.appName ?: "Not playing")
                     Spacer(Modifier.height(6.dp))
                     Text(np?.title ?: "Nothing playing", style = NgType.title.copy(color = ng.textPrimary, fontSize = 28.sp), maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Text(np?.artist ?: "Open Spotify or any music app", style = NgType.headline.copy(color = ng.accent), maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -151,7 +159,11 @@ private fun NowPlayingPanel(modifier: Modifier, nav: ShellNav) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                 GlassIconButton(Icons.Filled.SkipPrevious, "Previous", size = 68.dp) { m.previous() }
                 Spacer(Modifier.width(28.dp))
-                GlassIconButton(if (np?.isPlaying == true) Icons.Filled.Pause else Icons.Filled.PlayArrow, "Play/Pause", size = 86.dp, accent = true) { m.playPause() }
+                if (isSpotify) Box(
+                    Modifier.size(86.dp).pressable { m.playPause() }.clip(androidx.compose.foundation.shape.CircleShape).background(SpotifyGreen),
+                    contentAlignment = Alignment.Center,
+                ) { Icon(if (np?.isPlaying == true) Icons.Filled.Pause else Icons.Filled.PlayArrow, "Play/Pause", tint = Color.Black, modifier = Modifier.size(44.dp)) }
+                else GlassIconButton(if (np?.isPlaying == true) Icons.Filled.Pause else Icons.Filled.PlayArrow, "Play/Pause", size = 86.dp, accent = true) { m.playPause() }
                 Spacer(Modifier.width(28.dp))
                 GlassIconButton(Icons.Filled.SkipNext, "Next", size = 68.dp) { m.next() }
                 Spacer(Modifier.width(28.dp))

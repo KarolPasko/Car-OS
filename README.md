@@ -5,6 +5,10 @@ It's built with Kotlin, Jetpack Compose and Material 3 under a custom design sys
 
 ![Home – cluster dashboard](docs/screenshots/01-home.png)
 
+| CarPlay-style app grid & banner | Floating glass tab bar option |
+|---|---|
+| ![](docs/screenshots/13-carplay-grid.png) | ![](docs/screenshots/14-home-glass-bar.png) |
+
 | Light mode | Ultra-wide 1920×720 |
 |---|---|
 | ![](docs/screenshots/02-home-light.png) | ![](docs/screenshots/11-home-1920x720.png) |
@@ -27,7 +31,8 @@ It's built with Kotlin, Jetpack Compose and Material 3 under a custom design sys
 | Area | What it does | Where the data comes from |
 |---|---|---|
 | **Cluster home** | Big live speed readout and ring gauge, route summary over a live mini-map, trip computer (time, distance, average speed, altitude), status lights, iOS Control Centre-style tiles, weather card, now-playing card | Device GPS, Open-Meteo, Android MediaSession |
-| **Glass UI** | Floating Liquid Glass tab bar with a sliding lens, iOS status bar, inset-grouped settings, iOS switches and segmented controls, dark and light themes, accent colours, wallpapers | – |
+| **Apple-style UI** | CarPlay-style sidebar with time, network and battery (the head unit's own battery if it has one, otherwise your linked phone's), recent apps, and a dashboard ⇄ app-grid toggle. App grid with large squircle icons, a live calendar icon and pill labels. CarPlay-style bottom banners with **OK**. Optional floating Liquid Glass tab bar (*Settings › Dashboard › Navigation bar*). iOS inset-grouped settings, switches and segmented controls, dark and light themes, "Flow" wallpaper | Device status, Phone Link |
+| **Spotify-style widgets** | Now-playing cards tinted from the album artwork, green play button, "Playing on Spotify". When nothing plays locally but you're signed in to Spotify, the widgets show what's playing on your account (e.g. on your phone) and control it (Premium) | MediaSession, Spotify Web API `/me/player` |
 | **Navigation** | Full-screen MapLibre map, place search, long-press to drop a pin, route overview (distance, duration, ETA), turn-by-turn with spoken guidance, automatic re-routing, Home/Work/recent places, keeps running in the background | OpenStreetMap tiles (OpenFreeMap / CARTO), Photon search, OSRM routing |
 | **Speed limits** | Limit of the road you're on, updating as you move between roads. Shows **"No data"** when a road has no mapped limit and never guesses. Over-limit indication with a set tolerance | OpenStreetMap `maxspeed` tags via Overpass |
 | **Speed cameras** | Map markers and quiet alerts for cameras ahead in your direction of travel, plus average-speed zone tracking (your average speed inside the zone). Locations are labelled **Verified** (official dataset you imported), **Community mapped** (OpenStreetMap) or **Unverified** (your own reports) | OpenStreetMap download for a radius you choose, CSV import, on-device reports |

@@ -205,6 +205,10 @@ private fun DashboardSettings() {
             }
         }
     }
+    SettingGroup("Navigation bar") {
+        ChoiceRow("Style", "CarPlay sidebar shows time, signal and battery with your recent apps; the glass bar floats at the bottom",
+            com.nextgen.caros.data.NavBarStyle.entries.map { it to it.label }, s.navBarStyle, repo::setNavBarStyle)
+    }
     SettingGroup("Head unit integration") {
         SwitchRow(
             "Use as home screen",

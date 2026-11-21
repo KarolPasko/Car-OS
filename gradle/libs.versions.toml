@@ -33,6 +33,7 @@ maplibre-android = { group = "org.maplibre.gl", name = "android-sdk", version.re
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+palette = { group = "androidx.palette", name = "palette-ktx", version = "1.0.0" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 junit = { group = "junit", name = "junit", version = "4.13.2" }
 robolectric = { group = "org.robolectric", name = "robolectric", version = "4.14.1" }

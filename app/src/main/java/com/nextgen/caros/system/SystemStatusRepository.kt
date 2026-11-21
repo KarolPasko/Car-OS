@@ -20,6 +20,10 @@ data class SystemStatus(
     val volume: Float = 0.5f,
     /** App window brightness 0..1, or null to follow the system setting. */
     val brightness: Float? = null,
+    /** False on most head units (they run from the car's 12 V supply). */
+    val batteryPresent: Boolean = false,
+    val batteryLevel: Int? = null,
+    val charging: Boolean = false,
 )
 
 /** Connectivity, media volume and in-app brightness for the control tiles. */
@@ -31,6 +35,20 @@ class SystemStatusRepository(private val context: Context, scope: CoroutineScope
 
     init {
         refresh()
+        val batt = object : android.content.BroadcastReceiver() {
+            override fun onReceive(c: Context?, i: Intent?) {
+                i ?: return
+                val level = i.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1)
+                val scale = i.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, 100).coerceAtLeast(1)
+                val status = i.getIntExtra(android.os.BatteryManager.EXTRA_STATUS, -1)
+                _state.value = _state.value.copy(
+                    batteryPresent = i.getBooleanExtra(android.os.BatteryManager.EXTRA_PRESENT, false) && level >= 0,
+                    batteryLevel = if (level >= 0) level * 100 / scale else null,
+                    charging = status == android.os.BatteryManager.BATTERY_STATUS_CHARGING || status == android.os.BatteryManager.BATTERY_STATUS_FULL,
+                )
+            }
+        }
+        context.registerReceiver(batt, android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED))
         runCatching {
             cm.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: Network) = refresh()

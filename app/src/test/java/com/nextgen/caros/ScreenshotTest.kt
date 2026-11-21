@@ -60,7 +60,12 @@ class ScreenshotTest {
         })
     }
 
-    private fun shoot(name: String, theme: ThemeMode = ThemeMode.DARK, content: @Composable () -> Unit) {
+    private fun shoot(
+        name: String, theme: ThemeMode = ThemeMode.DARK,
+        wallpaper: com.nextgen.caros.data.WallpaperPreset? = null,
+        navBar: com.nextgen.caros.data.NavBarStyle? = null,
+        content: @Composable () -> Unit,
+    ) {
         // The UI has intentional never-ending animations (clock, visualiser), so drive time manually.
         compose.mainClock.autoAdvance = false
         compose.setContent {
@@ -68,7 +73,7 @@ class ScreenshotTest {
             CompositionLocalProvider(LocalMapRendering provides false) {
                 NextGenTheme(s.copy(themeMode = theme)) {
                     androidx.compose.foundation.layout.Box {
-                        Wallpaper()
+                        Wallpaper(wallpaper)
                         content()
                     }
                 }
@@ -89,6 +94,17 @@ class ScreenshotTest {
     @Test fun settingsCameras() { shoot("06-settings-cameras") { AppShell(Screen.SETTINGS, SettingsSection.CAMERAS) } }
     @Test fun settingsAppearance() { shoot("07-settings-appearance") { AppShell(Screen.SETTINGS, SettingsSection.APPEARANCE) } }
     @Test fun settingsMusic() { shoot("08-settings-music") { AppShell(Screen.SETTINGS, SettingsSection.MUSIC) } }
+    @Test fun carPlayGrid() {
+        com.nextgen.caros.ui.shell.Notifier.show("Destination from Pixel 8", "Buckingham Palace")
+        shoot("13-carplay-grid", wallpaper = com.nextgen.caros.data.WallpaperPreset.FLOW) { AppShell(Screen.HOME, initialHomeGrid = true) }
+        com.nextgen.caros.ui.shell.Notifier.banner.value?.let { com.nextgen.caros.ui.shell.Notifier.dismiss(it.id) }
+    }
+    @Test fun glassBar() {
+        appContainer.settings.setNavBarStyle(com.nextgen.caros.data.NavBarStyle.TAB_BAR)
+        compose.mainClock.advanceTimeBy(500)
+        shoot("14-home-glass-bar") { AppShell(Screen.HOME) }
+        appContainer.settings.setNavBarStyle(com.nextgen.caros.data.NavBarStyle.SIDEBAR)
+    }
     @Test fun settingsPhoneLink() { shoot("12-settings-phone-link") { AppShell(Screen.SETTINGS, SettingsSection.PHONE_LINK) } }
     @Test fun onboarding() { shoot("09-onboarding") { OnboardingScreen {} } }
 

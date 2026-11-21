@@ -63,6 +63,7 @@ enum class MapStyle(val label: String, val darkUrl: String, val lightUrl: String
 
 enum class WallpaperPreset(val label: String, val colors: List<Long>) {
     MIDNIGHT("Midnight", listOf(0xFF000000, 0xFF05070C, 0xFF0A0F18)),
+    FLOW("Flow", listOf(0xFF2A0A2E, 0xFFB3122E, 0xFF6D28D9)),
     NEBULA("Nebula", listOf(0xFF05070D, 0xFF0B1636, 0xFF1C0B3A)),
     OCEAN("Deep ocean", listOf(0xFF020617, 0xFF06283D, 0xFF0B4F6C)),
     AURORA("Aurora", listOf(0xFF03140F, 0xFF0A2A2A, 0xFF21114A)),
@@ -70,6 +71,8 @@ enum class WallpaperPreset(val label: String, val colors: List<Long>) {
     SUNSET("Sunset drive", listOf(0xFF0E0716, 0xFF2A0E2E, 0xFF3D1A12)),
     IMAGE("Custom image", emptyList()),
 }
+
+enum class NavBarStyle(val label: String) { SIDEBAR("CarPlay sidebar"), TAB_BAR("Floating glass bar") }
 
 enum class PhoneLinkRole(val label: String) { OFF("Off"), HEAD_UNIT("Head unit"), PHONE("Phone") }
 
@@ -118,6 +121,7 @@ data class AppSettings(
     val phoneLinkDevice: String = "",
     val phoneGpsMode: PhoneGpsMode = PhoneGpsMode.FALLBACK,
     val sharePhoneLocation: Boolean = true,
+    val navBarStyle: NavBarStyle = NavBarStyle.SIDEBAR,
 )
 
 /** Persists every user preference with Jetpack DataStore so they survive restarts. */
@@ -163,6 +167,7 @@ class SettingsRepository(private val context: Context, scope: CoroutineScope) {
         val linkDevice = stringPreferencesKey("phoneLinkDevice")
         val phoneGps = stringPreferencesKey("phoneGpsMode")
         val shareLoc = booleanPreferencesKey("sharePhoneLocation")
+        val navBar = stringPreferencesKey("navBarStyle")
     }
 
     private inline fun <reified E : Enum<E>> Preferences.enum(key: Preferences.Key<String>, def: E): E =
@@ -210,6 +215,7 @@ class SettingsRepository(private val context: Context, scope: CoroutineScope) {
             phoneLinkDevice = this[K.linkDevice] ?: d.phoneLinkDevice,
             phoneGpsMode = enum(K.phoneGps, d.phoneGpsMode),
             sharePhoneLocation = this[K.shareLoc] ?: d.sharePhoneLocation,
+            navBarStyle = enum(K.navBar, d.navBarStyle),
         )
     }
 
@@ -270,4 +276,5 @@ class SettingsRepository(private val context: Context, scope: CoroutineScope) {
     fun setPhoneLinkDevice(v: String) = write { it[K.linkDevice] = v }
     fun setPhoneGpsMode(v: PhoneGpsMode) = write { it[K.phoneGps] = v.name }
     fun setSharePhoneLocation(v: Boolean) = write { it[K.shareLoc] = v }
+    fun setNavBarStyle(v: NavBarStyle) = write { it[K.navBar] = v.name }
 }

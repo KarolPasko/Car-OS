@@ -396,10 +396,10 @@ private fun DriveInfo(s: AppSettings, navState: NavState, imperial: Boolean, lim
     val loc by appContainer.location.state.collectAsState()
     val link by appContainer.phoneLink.state.collectAsState()
     val n = navState as? NavState.Navigating
-    Column(modifier.padding(top = 34.dp, end = 18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(modifier.padding(top = 34.dp, end = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text("Drive info", style = NgType.caption.copy(color = ng.textSecondary, letterSpacing = 0.sp))
         Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             if (n != null) {
                 InfoTile("${(n.progress.durationRemainingS / 60).toInt()}", "min", Icons.Filled.Schedule)
                 InfoTile(Geo.formatDistance(n.progress.distanceRemainingM, imperial).substringBefore(' '),
@@ -435,7 +435,7 @@ private fun DriveInfo(s: AppSettings, navState: NavState, imperial: Boolean, lim
 private fun InfoTile(value: String, unit: String, icon: ImageVector) {
     val ng = LocalNg.current
     Column(
-        Modifier.width(58.dp).clip(RoundedCornerShape(12.dp))
+        Modifier.width(52.dp).clip(RoundedCornerShape(12.dp))
             .background(cardBrush(ng))
             .border(1.dp, ng.glassBorder, RoundedCornerShape(12.dp))
             .padding(vertical = 8.dp),
@@ -600,7 +600,7 @@ private fun WeatherCard(s: AppSettings, modifier: Modifier) {
                 Text(SimpleDateFormat("EEE, MMM d", Locale.getDefault()).format(Date(now)), style = NgType.label.copy(color = ng.textSecondary))
                 Spacer(Modifier.height(2.dp))
                 Row(verticalAlignment = Alignment.Top) {
-                    Text(w?.temp(s.speedUnit)?.trimEnd('°') ?: "--", style = NgType.speedHuge.copy(color = ng.textPrimary, fontSize = 50.sp))
+                    Text(w?.temp(s.speedUnit)?.trimEnd('°') ?: "—", style = NgType.speedHuge.copy(color = ng.textPrimary, fontSize = 50.sp))
                     Text("°", style = NgType.title.copy(color = ng.textPrimary, fontSize = 30.sp))
                 }
                 Text(
@@ -667,71 +667,83 @@ private fun DrawScope.drawCloud() {
 
 // ============================================================================ music
 
+/** Spotify-style now-playing card: artwork-tinted background, green play button. */
 @Composable
 private fun NowPlayingCard(nav: ShellNav, modifier: Modifier) {
     val ng = LocalNg.current
     val media by appContainer.media.state.collectAsState()
-    val np = media.nowPlaying
-    val m = appContainer.media
+    val pv = com.nextgen.caros.ui.music.rememberPlayerView()
+    val tint by animateColorAsState(
+        com.nextgen.caros.ui.music.rememberArtColor(pv?.art, pv?.artUrl, Color(0xFF2A2A2A)), tween(800), label = "artTint",
+    )
     var pos by remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(np) { while (true) { pos = np?.positionNow()?.toFloat() ?: 0f; delay(500) } }
-    val frac = if (np != null && np.durationMs > 0) (pos / np.durationMs).coerceIn(0f, 1f) else 0f
+    LaunchedEffect(pv?.title, pv?.isPlaying) { while (true) { pos = pv?.positionNow?.invoke()?.toFloat() ?: 0f; delay(500) } }
+    val frac = if (pv != null && pv.durationMs > 0) (pos / pv.durationMs).coerceIn(0f, 1f) else 0f
+    val fg = Color.White
 
     Column(
         modifier.clip(RoundedCornerShape(28.dp))
-            .background(cardBrush(ng))
-            .border(1.dp, Brush.verticalGradient(listOf(ng.glassBorder.copy(alpha = 0.6f), Color.Transparent)), RoundedCornerShape(28.dp))
+            .background(Brush.verticalGradient(listOf(tint, androidx.compose.ui.graphics.lerp(tint, com.nextgen.caros.ui.music.SpotifyBlack, 0.75f))))
+            .border(1.dp, Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.22f), Color.Transparent)), RoundedCornerShape(28.dp))
             .padding(12.dp),
     ) {
-        // Wide artwork banner
-        Box(
-            Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(18.dp))
-                .background(Brush.linearGradient(listOf(ng.accent.copy(alpha = 0.35f), Color(0xFF7C3AED).copy(alpha = 0.35f))))
-                .pressable(pressedScale = 0.98f) { nav.go(Screen.MUSIC) },
-            contentAlignment = Alignment.Center,
-        ) {
-            when {
-                np?.art != null -> Image(np.art.asImageBitmap(), "Artwork", contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                np?.artUri != null -> AsyncImage(np.artUri, "Artwork", contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                else -> Icon(Icons.Filled.MusicNote, null, tint = ng.textSecondary, modifier = Modifier.size(34.dp))
+        Row(Modifier.fillMaxWidth().weight(1f).pressable(pressedScale = 0.98f) { nav.go(Screen.MUSIC) }) {
+            Box(
+                Modifier.fillMaxHeight().aspectRatio(1f).clip(RoundedCornerShape(10.dp))
+                    .background(Color.White.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                when {
+                    pv?.art != null -> Image(pv.art.asImageBitmap(), "Artwork", contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                    pv?.artUrl != null -> AsyncImage(pv.artUrl, "Artwork", contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                    else -> Icon(Icons.Filled.MusicNote, null, tint = fg.copy(alpha = 0.7f), modifier = Modifier.size(30.dp))
+                }
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.Center) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (pv?.isSpotify == true) Box(Modifier.size(8.dp).clip(CircleShape).background(com.nextgen.caros.ui.music.SpotifyGreen))
+                    if (pv?.isSpotify == true) Spacer(Modifier.width(6.dp))
+                    Text(
+                        (if (pv?.isSpotify == true) "PLAYING ON " + pv.source.uppercase() else pv?.source?.uppercase() ?: "NOW PLAYING"),
+                        style = NgType.caption.copy(color = fg.copy(alpha = 0.75f), fontSize = 10.sp), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Text(pv?.title ?: if (media.hasAccess) "Nothing playing" else "Tap to set up music",
+                    style = NgType.title.copy(color = fg, fontWeight = FontWeight.Bold, fontSize = 18.sp), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(pv?.artist ?: "Spotify · any player", style = NgType.label.copy(color = fg.copy(alpha = 0.7f)), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         Spacer(Modifier.height(8.dp))
-        Text(np?.title ?: if (media.hasAccess) "Nothing playing" else "Tap Music to set up", style = NgType.title.copy(color = ng.textPrimary, fontWeight = FontWeight.Bold, fontSize = 19.sp),
-            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 6.dp))
-        Text(np?.artist?.ifBlank { np.appName } ?: "Spotify · any player", style = NgType.label.copy(color = ng.textSecondary),
-            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 6.dp))
-        Spacer(Modifier.height(6.dp))
-        Row(Modifier.padding(horizontal = 6.dp)) {
-            Text(fmtMs(pos.toLong()), style = NgType.caption.copy(color = ng.textSecondary, fontSize = 10.sp))
-            Spacer(Modifier.weight(1f))
-            Text(if (np != null && np.durationMs > 0) fmtMs(np.durationMs) else "--:--", style = NgType.caption.copy(color = ng.textSecondary, fontSize = 10.sp))
+        Box(Modifier.padding(horizontal = 4.dp).fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)).background(fg.copy(alpha = 0.25f))) {
+            Box(Modifier.fillMaxWidth(frac).fillMaxHeight().clip(RoundedCornerShape(2.dp)).background(fg))
         }
-        Box(Modifier.padding(horizontal = 6.dp, vertical = 4.dp).fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp)).background(ng.textPrimary.copy(alpha = 0.15f))) {
-            Box(Modifier.fillMaxWidth(frac).fillMaxHeight().background(Color(0xFF2DD4BF)))
+        Row(Modifier.padding(horizontal = 4.dp, vertical = 2.dp)) {
+            Text(fmtMs(pos.toLong()), style = NgType.caption.copy(color = fg.copy(alpha = 0.7f), fontSize = 10.sp))
+            Spacer(Modifier.weight(1f))
+            Text(if (pv != null && pv.durationMs > 0) "-" + fmtMs(pv.durationMs - pos.toLong()) else "--:--", style = NgType.caption.copy(color = fg.copy(alpha = 0.7f), fontSize = 10.sp))
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-            val seekable = np?.canSeek == true
-            TransportIcon(Icons.Filled.FastRewind, "Back 15 seconds", enabled = seekable) { m.seekBy(-15_000) }
-            TransportIcon(Icons.Filled.SkipPrevious, "Previous") { m.previous() }
-            val ringTrack = ng.textPrimary.copy(alpha = 0.12f)
-            Box(Modifier.size(46.dp).pressable { m.playPause() }, contentAlignment = Alignment.Center) {
-                Canvas(Modifier.fillMaxSize()) {
-                    drawCircle(ringTrack, style = Stroke(3f))
-                    drawArc(Color(0xFF2DD4BF), -90f, 360f * frac.coerceAtLeast(0.02f), false, style = Stroke(4f, cap = StrokeCap.Round),
-                        topLeft = Offset(2f, 2f), size = Size(size.width - 4f, size.height - 4f))
-                }
-                Icon(if (np?.isPlaying == true) Icons.Filled.Pause else Icons.Filled.PlayArrow, "Play/Pause", tint = ng.textPrimary, modifier = Modifier.size(26.dp))
+            val seekable = pv?.canSeek == true
+            TransportIcon(Icons.Filled.FastRewind, "Back 15 seconds", enabled = seekable, tint = fg) { pv?.seekBy(-15_000) }
+            TransportIcon(Icons.Filled.SkipPrevious, "Previous", tint = fg) { pv?.previous() ?: appContainer.media.previous() }
+            Box(
+                Modifier.size(50.dp).pressable { pv?.playPause() ?: appContainer.media.playPause() }.clip(CircleShape)
+                    .background(if (pv?.isSpotify != false) com.nextgen.caros.ui.music.SpotifyGreen else Color.White),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(if (pv?.isPlaying == true) Icons.Filled.Pause else Icons.Filled.PlayArrow, "Play/Pause", tint = Color.Black, modifier = Modifier.size(28.dp))
             }
-            TransportIcon(Icons.Filled.SkipNext, "Next") { m.next() }
-            TransportIcon(Icons.Filled.FastForward, "Forward 15 seconds", enabled = seekable) { m.seekBy(15_000) }
+            TransportIcon(Icons.Filled.SkipNext, "Next", tint = fg) { pv?.next() ?: appContainer.media.next() }
+            TransportIcon(Icons.Filled.FastForward, "Forward 15 seconds", enabled = seekable, tint = fg) { pv?.seekBy(15_000) }
         }
     }
+    @Suppress("UNUSED_EXPRESSION") ng
 }
 
 @Composable
-private fun TransportIcon(icon: ImageVector, desc: String, enabled: Boolean = true, onClick: () -> Unit) {
-    Icon(icon, desc, tint = LocalNg.current.textPrimary.copy(alpha = if (enabled) 1f else 0.3f),
+private fun TransportIcon(icon: ImageVector, desc: String, enabled: Boolean = true, tint: Color = LocalNg.current.textPrimary, onClick: () -> Unit) {
+    Icon(icon, desc, tint = tint.copy(alpha = if (enabled) 1f else 0.3f),
         modifier = Modifier.size(40.dp).pressable(enabled = enabled, onClick = onClick).padding(7.dp))
 }
 
